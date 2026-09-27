@@ -1,83 +1,98 @@
 # Home Assistant Wasp Sensor
 
-This is a Wasp Sensor for Home Assistant. It is installable as a `custom_component` or via [HACS](https://hacs.xyz/).
+Wasp Sensor infers occupancy from motion inside a closed room. Once motion is
+confirmed with all doors closed, occupancy stays on until a door opens. It is a
+local, event-driven helper with no network dependencies or polling.
 
-To install via HACS add the repository URL `https://github.com/dlashua/hass-wasp_sensor` as a custom resposity. It should then show up on the Inegrations Installation page.
+Requires Home Assistant 2026.9 or later. Install with HACS using the custom
+integration repository `https://github.com/benbraun/hass-wasp_sensor`, or copy
+`custom_components/wasp_sensor` into your Home Assistant `custom_components`
+directory and restart Home Assistant.
 
-# Wasp Sensor
+## Configuration
 
-PIR Motion Sensors aren't perfect. If you enter a room and are sitting quietly -- working, reading, sleeping, watching Television -- a PIR Motion Sensor will eventually see no motion. Using such a sensor as the sole source of information to determine if a room is occupied can leave undesired behavior -- lights turning off while you're still in the room, HVAC no longer adjusting temperature for that room, etc. A Wasp Sensor is one solution to that problem.
-
-The name "Wasp in a Box" has been used many times in reference to the logic contained in this Integration. The idea is, if motion is seen in a room (the Wasp) while all the doors are closed, then, even if motion stops, people (the Wasp) are still in there. Once a door opens, the logic resets.
-
-This can also be used if you have motion sensors at all of the exits for a room. If motion happened inside the room and no motion has happened at the exits of a room, then someone is still inside the room.
-
-# Usage
-
-This integration is configurable with YAML in `configuration.yaml`. Here's an example configuration:
+Add **Wasp Sensor** under Settings → Devices & services, or keep existing YAML:
 
 ```yaml
 wasp_sensor:
   - name: office
     wasp_sensors:
-      - binary_sensor.office_motion_front
-      - binary_sensor.office_motion_rear
+      - binary_sensor.office_motion
     box_sensors:
       - binary_sensor.office_door
-
-  - name: office_motion
-    wasp_sensors:
-      - binary_sensor.office_motion_front
-      - binary_sensor.office_motion_rear
-    box_sensors:
-      - binary_sensor.halldown_motion
+    timeout: 65
+    sensor_change_delay: 1
 ```
 
-# Configuration Details
+| Setting | Meaning | Default |
+| --- | --- | --- |
+| `name` | Required sensor name | — |
+| `wasp_sensors` | Motion is active when `on` | `[]` |
+| `wasp_inv_sensors` | Motion is active when `off` | `[]` |
+| `box_sensors` | Door is closed when `off` | `[]` |
+| `box_inv_sensors` | Door is closed when `on` | `[]` |
+| `timeout` | Confirmation delay for motion already active when the door closes | 5 seconds |
+| `sensor_change_delay` | Debounce for new motion while the door is closed | 1 second |
 
-## name
-User Defined name for the `binary_sensor`
+YAML delays are nonnegative seconds; UI delays use duration selectors. Zero
+disables the relevant delay. UI entries can be adjusted via their options.
+Existing YAML unique IDs (`wasp_sensor_<name>`) and UI entry IDs are preserved.
+YAML sensors stay YAML sensors; adding a UI entry does not migrate them.
 
-## wasp_sensors
-A List of `entity_id`s that indicate motion in the room. These Entities should have an on/off state and should be `on` when motion is detected.
+Call `wasp_sensor.reload` to apply YAML edits without restarting. Invalid YAML
+leaves existing sensors running. Installing updated Python code still requires a
+Home Assistant restart.
 
-## wasp_inv_sensors
-The same as `wasp_sensors` but `off` indicates motion.
+## Occupancy behavior
 
-## box_sensors
-A list of `entity_id`s that indicate when the room is open or when an exit is being used. These Entities should have an on/off state and should be `on` to indicate that the room is exitable or being exited.
+- New motion while all doors are closed latches occupancy after the debounce.
+- Opening any door immediately clears occupancy and cancels pending timers.
+- Closing a door while motion is already active starts the full timeout. Opening
+  and closing again restarts it; an earlier motion event cannot bypass it.
+- A short motion pulse is ignored. Motion ending after occupancy is latched does
+  not clear the latch.
+- Attribute-only updates (such as a door's battery level) do not reset occupancy.
+- Missing, unknown, or unavailable doors do not count as closed and clear the
+  latch. Missing motion sensors do not count as active; they do not clear a latch
+  by themselves. A restored latch is retained only if all doors are known closed.
+- With no doors configured, the box is always considered closed, so confirmed
+  occupancy remains latched. Configure door/exit sensors if it needs to reset.
+- At startup, active motion in a closed room is confirmed after the timeout.
 
-## box_inv_sensors
-The same as `box_sensors` but `off` indicates that the room is exitable or being exited.
-
-## timeout
-The number of seconds that `wasp_sensors` and `wasp_inv_sensors` should be in the motion detected state to indicate that the room is truly occupied. This defaults to 180.
-
-# Logic
-
-If the "box" is closed and THEN motion is detected, the wasp sensor will immediately turn on.
-
-If the "box" is opened the wasp sensor will immediate turn off. It will stay off until the "box" is closed.
-
-If the "box" becomes closed WHILE motion is detected, the wasp sensor will wait for `timeout` to elapse before checking to ensure that motion is still detected. If it is, the wasp sensor will turn on.
-
-# Best Use Cases
-With the above configuration, I recommend setting up a template `binary_sensor` to indicate room occupancy.
+This helper represents the latched part of occupancy. If you also want occupancy
+while a door is open, combine it with raw motion in a template binary sensor:
 
 ```yaml
 template:
   - binary_sensor:
-      - name: "Office Occupied"
+      - name: Office Occupied
         device_class: occupancy
-        state: >
-          {{
-          is_state('binary_sensor.office_motion','on')
-          or is_state('binary_sensor.wasp_office', 'on')
-          or is_state('binary_sensor.wasp_office_motion','on')
-          }}
+        state: >-
+          {{ is_state('binary_sensor.office_motion', 'on')
+             or is_state('binary_sensor.office', 'on') }}
 ```
 
-With the above, when `binary_sensor.office_occupied` is `on` your automations can take the desired actions when the room is occupied.
+Use the actual Wasp entity ID from your entity registry in the template; existing
+installations may retain a `wasp_sensor_` prefix or a manually assigned ID.
 
-If you don't have "door sensors" or have a room without doors, you can leave that part out of your configuration and out of the template `binary_sensor`. The same is true if you do not have "exit motion sensors". By setting these sensors in an `or` configuration using the template `binary_sensor` you ensure that occupancy will be indicated if any of these sensors have an `on` state.
+## Development
 
+The tests use real Home Assistant entities, state events, registries, and platform
+reloads in temporary configurations. They never connect to a running instance.
+
+```sh
+python -m pip install -r requirements_test.txt
+python -m unittest discover -s tests -v
+```
+
+Or use the production runtime image:
+
+```sh
+docker run --rm -v "$PWD:/work" -w /work --entrypoint python \
+  ghcr.io/home-assistant/home-assistant:2026.9.3 \
+  -m unittest discover -s tests -v
+```
+
+Based on [dlashua/hass-wasp_sensor](https://github.com/dlashua/hass-wasp_sensor),
+with configuration UI and translations from
+[rrooggiieerr/homeassistant-wasp](https://github.com/rrooggiieerr/homeassistant-wasp).

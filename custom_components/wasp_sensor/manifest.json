@@ -1,12 +1,17 @@
 {
   "domain": "wasp_sensor",
   "name": "Wasp Sensor",
-  "documentation": "https://github.com/dlashua/hass-wasp_sensor",
-  "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/dlashua/hass-wasp_sensor/issues",
-  "version": "0.0.4",
-  "config_flow": false,
   "codeowners": [
-    "@dlashua"
-  ]
+    "@benbraun",
+    "@dlashua",
+    "@rrooggiieerr"
+  ],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/benbraun/hass-wasp_sensor",
+  "integration_type": "helper",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/benbraun/hass-wasp_sensor/issues",
+  "requirements": [],
+  "version": "0.1.0"
 }
