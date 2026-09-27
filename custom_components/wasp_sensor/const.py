@@ -1,13 +1,11 @@
-"""Constants for integration_blueprint."""
+"""Constants for Wasp Sensor."""
+
 # Base component constants
 NAME = "Wasp Sensor"
 DOMAIN = "wasp_sensor"
 DOMAIN_DATA = f"{DOMAIN}_data"
-VERSION = "0.0.1"
-ISSUE_URL = "http://google.com"
-
-# Device classes
-BINARY_SENSOR_DEVICE_CLASS = "occupancy"
+VERSION = "0.1.0"
+ISSUE_URL = "https://github.com/benbraun/hass-wasp_sensor/issues"
 
 # Platforms
 BINARY_SENSOR = "binary_sensor"
@@ -26,9 +24,10 @@ CONF_BOX_SENSORS = "box_sensors"
 CONF_BOX_INV_SENSORS = "box_inv_sensors"
 CONF_TIMEOUT = "timeout"
 CONF_NAME = "name"
+CONF_SENSOR_CHANGE_DELAY = "sensor_change_delay"
 
 # Configuration
-SENSOR_CHANGE_DELAY = 1
+DEFAULT_SENSOR_CHANGE_DELAY = 1
 DEFAULT_WASP_TIMEOUT = 5
 
 

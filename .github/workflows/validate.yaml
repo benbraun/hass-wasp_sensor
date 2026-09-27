@@ -6,14 +6,26 @@ on:
   schedule:
     - cron: "0 0 * * *"
 
+permissions:
+  contents: read
+
 jobs:
   validate:
     runs-on: "ubuntu-latest"
     steps:
-      - uses: "actions/checkout@v2"
+      - uses: "actions/checkout@v7"
       - uses: home-assistant/actions/hassfest@master
       - name: HACS validation
         uses: "hacs/action@main"
         with:
           category: "integration"
           ignore: "brands"
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Test with Home Assistant 2026.9.3
+        run: >-
+          docker run --rm -v "$PWD:/work" -w /work
+          --entrypoint python ghcr.io/home-assistant/home-assistant:2026.9.3
+          -m unittest discover -s tests -v
