@@ -11,7 +11,8 @@
           "box_inv_sensors": "Inverted Box Sensors",
           "timeout": "Timeout",
           "sensor_change_delay": "Sensor Change Delay"
-        }
+        },
+        "description": "Select motion and door sensors to infer occupancy in a closed room."
       }
     }
   },
@@ -26,10 +27,9 @@
           "box_inv_sensors": "Inverted Box Sensors",
           "timeout": "Timeout",
           "sensor_change_delay": "Sensor Change Delay"
-        }
+        },
+        "description": "Select motion and door sensors to infer occupancy in a closed room."
       }
     }
-  },
-  "binary_sensor": {
   }
 }
